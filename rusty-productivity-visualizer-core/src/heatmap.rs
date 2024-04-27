@@ -15,14 +15,18 @@ impl DataVisualizer for Heatmap {
         self.activities.push(activity);
     }
     fn visualize(&self) -> Self::Visualized {
-        let dates = self.activities
+        let mut dates: Vec<_> = self.activities
             .iter()
             .map(|date| {
                 let duration = date.duration();
                 let intensity = (duration.num_seconds() as f32 / 86400.0).clamp(0.0, 1.0);
-                HeatmapDay { intensity }
+                HeatmapDay {
+                    date: date.date,
+                    intensity,
+                }
             })
             .collect();
+        dates.sort_by(|a, b| a.date.cmp(&b.date));
         HeatmapVisualized {
             dates,
         }
@@ -40,10 +44,14 @@ impl HeatmapVisualized {
 }
 
 pub struct HeatmapDay {
+    date: NaiveDate,
     intensity: f32,
 }
 
 impl HeatmapDay {
+    pub fn date(&self) -> NaiveDate {
+        self.date
+    }
     pub fn intensity(&self) -> f32 {
         self.intensity
     }
@@ -144,20 +152,28 @@ mod tests {
             assert_eq!(1.0, date.intensity());
         }
         #[test]
-        fn heatmap_visualized_dates_accessor(intensity in -100f32..100.0) {
-            let day = HeatmapDay { intensity };
+        fn heatmap_visualized_dates_accessor(day in -365i64*100..365*100, intensity in -100f32..100.0) {
+            let date = NaiveDate::from_ymd_opt(2000, 1, 1).unwrap() - Duration::days(day);
+            let day = HeatmapDay {
+                date,
+                intensity,
+            };
             let visualized = HeatmapVisualized {
                 dates: vec![day],
             };
             let dates = visualized.dates();
             assert_eq!(1, dates.len());
+            assert_eq!(dates[0].date(), visualized.dates[0].date());
             assert_eq!(dates[0].intensity(), visualized.dates[0].intensity());
         }
         #[test]
-        fn heatmap_day_intensity_accessor(intensity in -100f32..100.0) {
+        fn heatmap_day_accessors(day in -365i64*100..365*100, intensity in -100f32..100.0) {
+            let date = NaiveDate::from_ymd_opt(2000, 1, 1).unwrap() - Duration::days(day);
             let day = HeatmapDay {
+                date,
                 intensity,
             };
+            assert_eq!(date, day.date());
             assert_eq!(intensity, day.intensity());
         }
     }
