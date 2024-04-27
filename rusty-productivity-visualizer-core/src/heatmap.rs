@@ -15,7 +15,17 @@ impl DataVisualizer for Heatmap {
         self.activities.push(activity);
     }
     fn visualize(&self) -> Self::Visualized {
-        todo!()
+        let dates = self.activities
+            .iter()
+            .map(|date| {
+                let duration = date.duration();
+                let intensity = (duration.num_seconds() as f32 / 86400.0).clamp(0.0, 1.0);
+                HeatmapDay { intensity }
+            })
+            .collect();
+        HeatmapVisualized {
+            dates,
+        }
     }
 }
 
@@ -72,7 +82,66 @@ mod tests {
                 .date(date)
                 .duration(duration);
             heatmap.add_activity(activity);
-            //let visualized = heatmap.visualize();
+            let visualized = heatmap.visualize();
+            let date = visualized.dates();
+            assert_eq!(1, date.len());
+            let date = &date[0];
+            let seconds = duration.num_seconds();
+            if seconds < 0 {
+                assert_eq!(0.0, date.intensity());
+            } else if seconds > 86400 {
+                assert_eq!(1.0, date.intensity());
+            } else {
+                assert_eq!(seconds as f32 / 86400.0, date.intensity());
+            }
+        }
+        #[test]
+        fn heatmap_visualize_between_day_duration(name in ".*", day in -365i64*100..365*100, duration in 0i64..=86400) {
+            let date = NaiveDate::from_ymd_opt(2000, 1, 1).unwrap() - Duration::days(day);
+            let duration = TimeDelta::seconds(duration);
+            let mut heatmap = Heatmap::default();
+            let activity = ActivityBuilder.name(name.clone())
+                .date(date)
+                .duration(duration);
+            heatmap.add_activity(activity);
+            let visualized = heatmap.visualize();
+            let date = visualized.dates();
+            assert_eq!(1, date.len());
+            let date = &date[0];
+            let seconds = duration.num_seconds();
+            assert_eq!(seconds as f32 / 86400.0, date.intensity());
+        }
+        #[test]
+        fn heatmap_visualize_negative_duration(name in ".*", day in -365i64*100..365*100) {
+            let date = NaiveDate::from_ymd_opt(2000, 1, 1).unwrap() - Duration::days(day);
+            let duration = TimeDelta::seconds(-100);
+            let mut heatmap = Heatmap::default();
+            let activity = ActivityBuilder.name(name.clone())
+                .date(date)
+                .duration(duration);
+            heatmap.add_activity(activity);
+            let visualized = heatmap.visualize();
+            let date = visualized.dates();
+            assert_eq!(1, date.len());
+            let date = &date[0];
+            let seconds = duration.num_seconds();
+            assert_eq!(0.0, date.intensity());
+        }
+        #[test]
+        fn heatmap_visualize_above_day_duration(name in ".*", day in -365i64*100..365*100) {
+            let date = NaiveDate::from_ymd_opt(2000, 1, 1).unwrap() - Duration::days(day);
+            let duration = TimeDelta::seconds(90000);
+            let mut heatmap = Heatmap::default();
+            let activity = ActivityBuilder.name(name.clone())
+                .date(date)
+                .duration(duration);
+            heatmap.add_activity(activity);
+            let visualized = heatmap.visualize();
+            let date = visualized.dates();
+            assert_eq!(1, date.len());
+            let date = &date[0];
+            let seconds = duration.num_seconds();
+            assert_eq!(1.0, date.intensity());
         }
         #[test]
         fn heatmap_visualized_dates_accessor(intensity in -100f32..100.0) {
