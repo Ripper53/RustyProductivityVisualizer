@@ -44,37 +44,36 @@ mod tests {
     use crate::ActivityBuilder;
 
     use super::*;
+    use chrono::Duration;
     use proptest::prelude::*;
 
-    #[test]
-    fn heatmap_add_activity() {
-        let mut heatmap = Heatmap::default();
-        const NAME: &str = "TEST_NAME";
-        const DATE: NaiveDate = NaiveDate::MIN;
-        const DURATION: TimeDelta = TimeDelta::zero();
-        let activity = ActivityBuilder.name(NAME.into())
-            .date(DATE)
-            .duration(DURATION);
-        heatmap.add_activity(activity);
-        assert_eq!(1, heatmap.activities.len());
-        let activity = &heatmap.activities[0];
-        assert_eq!(NAME, activity.name());
-        assert_eq!(DATE, activity.date());
-        assert_eq!(DURATION, activity.duration());
-    }
-    #[test]
-    fn heatmap_visualize() {
-        let mut heatmap = Heatmap::default();
-        const NAME: &str = "TEST_NAME";
-        const DATE: NaiveDate = NaiveDate::MIN;
-        const DURATION: TimeDelta = TimeDelta::zero();
-        let activity = ActivityBuilder.name(NAME.into())
-            .date(DATE)
-            .duration(DURATION);
-        heatmap.add_activity(activity);
-        //let visualized = heatmap.visualize();
-    }
     proptest! {
+        #[test]
+        fn heatmap_add_activity(name in ".*", day in -365i64*100..365*100, duration in -10000i64..10000) {
+            let date = NaiveDate::from_ymd_opt(2000, 1, 1).unwrap() - Duration::days(day);
+            let duration = TimeDelta::seconds(duration);
+            let mut heatmap = Heatmap::default();
+            let activity = ActivityBuilder.name(name.clone())
+                .date(date)
+                .duration(duration);
+            heatmap.add_activity(activity);
+            assert_eq!(1, heatmap.activities.len());
+            let activity = &heatmap.activities[0];
+            assert_eq!(name, activity.name());
+            assert_eq!(date, activity.date());
+            assert_eq!(duration, activity.duration());
+        }
+        #[test]
+        fn heatmap_visualize(name in ".*", day in -365i64*100..365*100, duration in -10000i64..10000) {
+            let date = NaiveDate::from_ymd_opt(2000, 1, 1).unwrap() - Duration::days(day);
+            let duration = TimeDelta::seconds(duration);
+            let mut heatmap = Heatmap::default();
+            let activity = ActivityBuilder.name(name.clone())
+                .date(date)
+                .duration(duration);
+            heatmap.add_activity(activity);
+            //let visualized = heatmap.visualize();
+        }
         #[test]
         fn heatmap_visualized_dates_accessor(intensity in -100f32..100.0) {
             let day = HeatmapDay { intensity };
